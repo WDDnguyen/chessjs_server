@@ -4,6 +4,8 @@
   "description": "Chess server",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -11,6 +13,10 @@
   "dependencies": {
     "chess.js": "^0.11.0",
     "express": "^4.17.1",
+    "nanoid": "^3.1.20",
     "socket.io": "^3.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
   }
 }
