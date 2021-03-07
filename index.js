@@ -63,13 +63,29 @@ io.on('connection', (socket) => {
         let chessRoom = createChessRoom(newRoomId, newRoomInfo.side, user)
 
         roomMap.set(newRoomId, chessRoom)
-        console.log('Create new room : ', newRoomId, socket.rooms, roomMap)
-        socket.emit('available_rooms', Array.from(roomMap.values()))
+        //console.log('Create new room : ', newRoomId, socket.rooms, roomMap)
+        io.emit('available_rooms', Array.from(roomMap.values()))
     })
 
-    socket.on('join_room', roomId => {
-        if (roomMap.get(roomId)) {
-            socket.emit('')
+    socket.on('join_room', ({room, user}) => {
+        const roomName = room.roomName
+        const chessRoom = roomMap.get(roomName)
+        
+        if (chessRoom) {
+            socket.join(roomName)
+            socket.emit('join_room_accepted')
+
+            const room = io.sockets.adapter.rooms.get(roomName.toString())
+            if (room.size === 2) {
+                if (Object.keys(chessRoom.chessGame.whitePlayer).length === 0) {
+                    chessRoom.chessGame.whitePlayer = user
+                } else {
+                    chessRoom.chessGame.blackPlayer = user
+                }
+
+                io.to(roomName).emit('play_chess_game', {roomName})
+            }
+
         } else {
             console.log('ERROR room not found')
         }
