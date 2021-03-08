@@ -36,7 +36,6 @@ const createChessGame = () => {
         whitePlayer: {},
         blackPlayer: {},
         gameId: nanoid(GAME_NANO_ID_SIZE),
-
         chess: new Chess()
     }
 }
@@ -46,22 +45,29 @@ const getChessStatus = (chess) => {
     const turn = chess.turn()
     const history = chess.history()
     const potentialMoves = chess.moves({verbose: true})
+    const isChecked = chess.in_check()
+    const isGameOver = chess.game_over()
 
     return {
         fen,
         turn,
         history,
-        potentialMoves
+        potentialMoves,
+        isChecked,
+        isGameOver
     }
 }
 
 // Socket handling
 io.on('connection', (socket) => {
+    console.log('A user is connected')
+    socket.on("disconnecting", () => {
+        // TO DO : before disconnecting, clean up room from room map created by user.
+    })
     socket.on('set_socket_nickname', nickname => {
         socket.nickname = nickname
     }) 
        
-    console.log('A user is connected')
     socket.on('disconnect', () => {
         console.log('user Disconnect', socket)
         
@@ -133,13 +139,16 @@ io.on('connection', (socket) => {
     // Chess Game Socket Handling
     socket.on('chess_state', ({roomId}) => {
         const chessRoom = roomMap.get(roomId)
-        const chessStatus = getChessStatus(chessRoom.chessGame.chess)
-        socket.emit('chess_state', chessStatus)
+        if (chessRoom) {
+            const chessStatus = getChessStatus(chessRoom.chessGame.chess)
+            socket.emit('chess_state', chessStatus)
+        }
     })
 
     socket.on('move', ({roomId, from, to}) => {
         const chessRoom = roomMap.get(roomId)
-        const validMove = chessRoom.chessGame.chess.move({from: from, to: to})
+        const chess = chessRoom.chessGame.chess
+        const validMove = chess.move({from: from, to: to})
 
         if (validMove) {
             const chessStatus = getChessStatus(chessRoom.chessGame.chess)
