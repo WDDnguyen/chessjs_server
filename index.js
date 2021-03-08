@@ -1,5 +1,8 @@
+require('dotenv').config()
 const {Chess} = require('chess.js')
-const app = require('express')()
+const express = require('express')
+const cors = require('cors')
+const app = express()
 const http = require('http').createServer(app)
 const {nanoid} = require('nanoid')
 const io = require('socket.io')(http, {
@@ -7,6 +10,55 @@ const io = require('socket.io')(http, {
         origin: "http://localhost:3000",
         methods: ["GET", "POST"]
     }
+})
+const User = require('./models/user')
+const mongoose = require('mongoose')
+const bcrypt = require('bcrypt')
+const url = process.env.MONGODB_URI
+
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
+
+app.use(cors())
+app.use(express.static('build'))
+app.use(express.json())
+
+app.post('/api/users',  async (request, response) => {
+    const body = request.body
+    console.log('REQUEST BODY', body, body.userName)
+
+    const saltRounds = 10
+    const passwordHash = await bcrypt.hash(body.password, saltRounds)
+    
+    const user = new User({
+      userName: body.userName,
+      creationTime: new Date(),
+      passwordHash
+    })
+  
+    user.save().then(savedUser => {
+      response.json(savedUser)
+    })
+})
+
+app.get('/api/users', (request, response) => {
+    User.find({}).then(users => {
+        response.json(users)
+    })
+})
+
+app.get('/api/users/:id', (request, response) => {
+    User.findById(request.params.id)
+    .then(user => {
+        if (user) {
+            response.json(user)
+        } else {
+            response.status(404).end()
+        }
+    })
+    .catch (error => {
+        console.log(error)
+        response.status(500).send({error: 'malformatted user id'})
+    })
 })
 
 let roomMap = new Map()
@@ -69,7 +121,7 @@ io.on('connection', (socket) => {
     }) 
        
     socket.on('disconnect', () => {
-        console.log('user Disconnect', socket)
+        console.log('user Disconnect')
         
     })
 
@@ -157,7 +209,7 @@ io.on('connection', (socket) => {
     })
 })
 
-const PORT = 3001
+const PORT = process.env.PORT
 const server = http.listen(PORT, () => {
     console.log('Server is running on port', server.address().port)
 })
