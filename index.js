@@ -1,4 +1,4 @@
-require('dotenv').config()
+const config = require('./utils/config')
 const {Chess} = require('chess.js')
 const express = require('express')
 const cors = require('cors')
@@ -14,7 +14,7 @@ const io = require('socket.io')(http, {
 const User = require('./models/user')
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
-const url = process.env.MONGODB_URI
+const url = config.MONGODB_URI
 
 mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
 
@@ -26,6 +26,7 @@ app.post('/api/users',  async (request, response) => {
     const body = request.body
     console.log('REQUEST BODY', body, body.userName)
 
+    
     const saltRounds = 10
     const passwordHash = await bcrypt.hash(body.password, saltRounds)
     
@@ -209,7 +210,7 @@ io.on('connection', (socket) => {
     })
 })
 
-const PORT = process.env.PORT
+const PORT = config.PORT
 const server = http.listen(PORT, () => {
     console.log('Server is running on port', server.address().port)
 })
