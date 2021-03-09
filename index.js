@@ -12,7 +12,7 @@ const io = require('socket.io')(http, {
     }
 })
 const usersRouter = require('./controllers/users')
-
+const storeChessMatch = require('./controllers/chessMatches')
 const mongoose = require('mongoose')
 const url = config.MONGODB_URI
 
@@ -31,9 +31,9 @@ const createChessRoom = (roomName, side, roomOwner) => {
     let chessGame = createChessGame()
 
     if (side === 'white') {
-        chessGame.whitePlayer = roomOwner
+        chessGame.whitePlayer = roomOwner.userName
     } else {
-        chessGame.blackPlayer = roomOwner
+        chessGame.blackPlayer = roomOwner.userName
     }
 
     const gameLog = [`${roomOwner.userName} has joined.`]
@@ -47,9 +47,9 @@ const createChessRoom = (roomName, side, roomOwner) => {
 }
 const createChessGame = () => {
     return {
-        whitePlayer: {},
-        blackPlayer: {},
         gameId: nanoid(GAME_NANO_ID_SIZE),
+        whitePlayer: '',
+        blackPlayer: '',
         chess: new Chess()
     }
 }
@@ -119,10 +119,10 @@ io.on('connection', (socket) => {
 
             const room = io.sockets.adapter.rooms.get(roomName.toString())
             if (room.size === 2) {
-                if (Object.keys(chessRoom.chessGame.whitePlayer).length === 0) {
-                    chessRoom.chessGame.whitePlayer = user
+                if (chessRoom.chessGame.whitePlayer === '') {
+                    chessRoom.chessGame.whitePlayer = user.userName
                 } else {
-                    chessRoom.chessGame.blackPlayer = user
+                    chessRoom.chessGame.blackPlayer = user.userName
                 }
 
                 io.to(roomName).emit('play_chess_game', {roomName})
@@ -155,6 +155,10 @@ io.on('connection', (socket) => {
         const chessRoom = roomMap.get(roomId)
         if (chessRoom) {
             const chessStatus = getChessStatus(chessRoom.chessGame.chess)
+            if (chessStatus.isGameOver) {
+                storeChessMatch(chessRoom.chessGame)
+            }
+
             socket.emit('chess_state', chessStatus)
         }
     })
