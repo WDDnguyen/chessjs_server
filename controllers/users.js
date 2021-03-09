@@ -5,26 +5,50 @@ const bcrypt = require('bcrypt')
 usersRouter.post('/', async (request, response) => {
     const body = request.body
 
-    const userExist = await User.findOne({userName: body.userName})
+    try {
+        const userExist = await User.findOne({userName: body.userName})
 
-    if (userExist) {
-        response.status(500).json({message: 'User already exists'})
-    } else {
-        const saltRounds = 10
-        try {
+        if (userExist) {
+            response.status(400).json({message: 'User already exists'})
+        } else {
+            const saltRounds = 10
             const passwordHash = await bcrypt.hash(body.password, saltRounds)
             const user = new User({
                 userName: body.userName,
                 creationTime: new Date(),
                 passwordHash
             })
-
+    
             const savedUser = await user.save()
             response.status(200).json(savedUser)
-
-        } catch (error) {
-            console.log('User Router error', error)
         }
+    } catch (error) {
+        console.error(error)
+        response.status(500).json({
+            message: "Server Error"
+        })
+    }
+})
+
+usersRouter.get('/', async (request, response) => {
+    const credentials = JSON.parse(request.query.credentials)
+    try {
+        const user = await User.findOne({userName: credentials.userName})
+        if (user) {
+            const isMatch = await bcrypt.compare(credentials.password, user.passwordHash)
+            if (isMatch) {
+                response.status(200).json(user)
+            } else {
+                response.status(400).json({message: 'Incorrect password'})
+            }
+        } else {
+            response.status(400).json({message: `User doesn't exist`})
+        }
+    } catch (error) {
+        console.error(error)
+        response.status(500).json({
+            message: "Server Error"
+        })
     }
 })
 
