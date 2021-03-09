@@ -7,7 +7,7 @@ const http = require('http').createServer(app)
 const {nanoid} = require('nanoid')
 const io = require('socket.io')(http, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: "*",
         methods: ["GET", "POST"]
     }
 })
@@ -24,8 +24,6 @@ app.use(express.json())
 app.use('/api/users', usersRouter)
 
 let roomMap = new Map()
-const ROOM_NANO_ID_SIZE = 5
-const GAME_NANO_ID_SIZE = 5
 
 const createChessRoom = (roomName, side, roomOwner) => {
     let chessGame = createChessGame()
@@ -47,16 +45,17 @@ const createChessRoom = (roomName, side, roomOwner) => {
 }
 const createChessGame = () => {
     return {
-        gameId: nanoid(GAME_NANO_ID_SIZE),
+        gameId: nanoid(config.GAME_ID_SIZE),
         whitePlayer: '',
         blackPlayer: '',
         chess: new Chess()
     }
 }
 
-const getChessStatus = (chess) => {
+const getChessStatus = (chess, whitePlayer, blackPlayer) => {
     const fen = chess.fen()
-    const turn = chess.turn()
+    const currentPlayer = chess.turn() === 'w' ? whitePlayer : blackPlayer
+    const winner = chess.in_checkmate() ? (chess.turn() === 'w' ? blackPlayer : whitePlayer) : '' 
     const history = chess.history()
     const potentialMoves = chess.moves({verbose: true})
     const isChecked = chess.in_check()
@@ -64,7 +63,8 @@ const getChessStatus = (chess) => {
 
     return {
         fen,
-        turn,
+        currentPlayer,
+        winner,
         history,
         potentialMoves,
         isChecked,
@@ -93,11 +93,11 @@ io.on('connection', (socket) => {
     })
 
     socket.on('create_room', ({newRoomInfo, user}) => {
-        const newRoomId = nanoid(ROOM_NANO_ID_SIZE)
+        const newRoomId = nanoid(config.ROOM_ID_SIZE)
 
         // Generate another roomID if collision happened
         if (socket.rooms.has(newRoomId)) {
-            newRoomId = nanoid(ROOM_NANO_ID_SIZE)
+            newRoomId = nanoid(config.ROOM_ID_SIZE)
         }
 
         socket.join(newRoomId)     
@@ -154,7 +154,9 @@ io.on('connection', (socket) => {
     socket.on('chess_state', ({roomId}) => {
         const chessRoom = roomMap.get(roomId)
         if (chessRoom) {
-            const chessStatus = getChessStatus(chessRoom.chessGame.chess)
+            const chessGame = chessRoom.chessGame
+            const chessStatus = 
+                getChessStatus(chessGame.chess, chessGame.whitePlayer, chessGame.blackPlayer)
             if (chessStatus.isGameOver) {
                 storeChessMatch(chessRoom.chessGame)
             }
@@ -169,14 +171,15 @@ io.on('connection', (socket) => {
         const validMove = chess.move({from: from, to: to})
 
         if (validMove) {
-            const chessStatus = getChessStatus(chessRoom.chessGame.chess)
+            const chessGame = chessRoom.chessGame
+            const chessStatus = 
+                getChessStatus(chess, chessGame.whitePlayer, chessGame.blackPlayer)
             io.to(roomId).emit('chess_state', chessStatus)
         }
     })
 })
 
-const PORT = config.PORT
-const server = http.listen(PORT, () => {
+const server = http.listen(config.PORT, () => {
     console.log('Server is running on port', server.address().port)
 })
 
