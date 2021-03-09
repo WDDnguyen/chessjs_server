@@ -195,7 +195,8 @@ io.on('connection', (socket) => {
     })
 })
 
-const server = http.listen(config.PORT, () => {
+const PORT = config.PORT || 3001
+const server = http.listen(PORT, () => {
     console.log('Server is running on port', server.address().port)
 })
 
