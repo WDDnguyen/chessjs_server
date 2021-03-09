@@ -11,9 +11,9 @@ const io = require('socket.io')(http, {
         methods: ["GET", "POST"]
     }
 })
-const User = require('./models/user')
+const usersRouter = require('./controllers/users')
+
 const mongoose = require('mongoose')
-const bcrypt = require('bcrypt')
 const url = config.MONGODB_URI
 
 mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
@@ -21,46 +21,7 @@ mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFind
 app.use(cors())
 app.use(express.static('build'))
 app.use(express.json())
-
-app.post('/api/users',  async (request, response) => {
-    const body = request.body
-    console.log('REQUEST BODY', body, body.userName)
-
-    
-    const saltRounds = 10
-    const passwordHash = await bcrypt.hash(body.password, saltRounds)
-    
-    const user = new User({
-      userName: body.userName,
-      creationTime: new Date(),
-      passwordHash
-    })
-  
-    user.save().then(savedUser => {
-      response.json(savedUser)
-    })
-})
-
-app.get('/api/users', (request, response) => {
-    User.find({}).then(users => {
-        response.json(users)
-    })
-})
-
-app.get('/api/users/:id', (request, response) => {
-    User.findById(request.params.id)
-    .then(user => {
-        if (user) {
-            response.json(user)
-        } else {
-            response.status(404).end()
-        }
-    })
-    .catch (error => {
-        console.log(error)
-        response.status(500).send({error: 'malformatted user id'})
-    })
-})
+app.use('/api/users', usersRouter)
 
 let roomMap = new Map()
 const ROOM_NANO_ID_SIZE = 5
