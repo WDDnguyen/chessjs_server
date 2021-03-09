@@ -45,8 +45,13 @@ usersRouter.get('/', async (request, response) => {
         if (user) {
             const isMatch = await bcrypt.compare(credentials.password, user.passwordHash)
             if (isMatch) {
+                const userForToken = {
+                    userName: user.userName,
+                    id: user._id
+                }
+
                 const token = jwt.sign(userForToken, config.SECRET)
-                response.status(200).json({token, userName: savedUser.userName})
+                response.status(200).json({token, userName: user.userName})
             } else {
                 response.status(400).json({message: 'Incorrect password'})
             }

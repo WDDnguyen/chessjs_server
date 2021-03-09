@@ -24,6 +24,7 @@ app.use(express.json())
 app.use('/api/users', usersRouter)
 
 let roomMap = new Map()
+let userMap = new Map()
 
 const createChessRoom = (roomName, side, roomOwner) => {
     let chessGame = createChessGame()
@@ -52,6 +53,21 @@ const createChessGame = () => {
     }
 }
 
+const removeUserRooms = (socket) => {
+    const rooms = socket.rooms
+    const userName = userMap.get(socket.id)
+    rooms.forEach(room => {
+        if (roomMap.has(room)){
+            const roomOwner = roomMap.get(room).roomOwner
+            if (roomOwner.userName === userName) {
+                roomMap.delete(room)
+                io.emit('available_rooms', Array.from(roomMap.values()))
+            }
+        }
+    })
+    
+}
+
 const getChessStatus = (chess, whitePlayer, blackPlayer) => {
     const fen = chess.fen()
     const currentPlayer = chess.turn() === 'w' ? whitePlayer : blackPlayer
@@ -74,13 +90,11 @@ const getChessStatus = (chess, whitePlayer, blackPlayer) => {
 
 // Socket handling
 io.on('connection', (socket) => {
+    
     console.log('A user is connected')
     socket.on("disconnecting", () => {
-        // TO DO : before disconnecting, clean up room from room map created by user.
+        removeUserRooms(socket)
     })
-    socket.on('set_socket_nickname', nickname => {
-        socket.nickname = nickname
-    }) 
        
     socket.on('disconnect', () => {
         console.log('user Disconnect')
@@ -93,15 +107,16 @@ io.on('connection', (socket) => {
     })
 
     socket.on('create_room', ({newRoomInfo, user}) => {
+        userMap.set(socket.id, user.userName)
         const newRoomId = nanoid(config.ROOM_ID_SIZE)
-
         // Generate another roomID if collision happened
         if (socket.rooms.has(newRoomId)) {
             newRoomId = nanoid(config.ROOM_ID_SIZE)
         }
 
-        socket.join(newRoomId)     
-
+        removeUserRooms(socket)
+        socket.join(newRoomId)
+          
         let chessRoom = createChessRoom(newRoomId, newRoomInfo.side, user)
 
         roomMap.set(newRoomId, chessRoom)
@@ -110,8 +125,9 @@ io.on('connection', (socket) => {
     })
 
     socket.on('join_room', ({roomName, user}) => {
+        userMap.set(socket.id, user.userName)
         const chessRoom = roomMap.get(roomName)
-        
+
         if (chessRoom) {
             socket.join(roomName)
             chessRoom.gameLog.push(`${user.userName} has joined`)
