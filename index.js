@@ -199,4 +199,3 @@ const PORT = config.PORT || 3001
 const server = http.listen(PORT, () => {
     console.log('Server is running on port', server.address().port)
 })
-
