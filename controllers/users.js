@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken')
 
 usersRouter.post('/', async (request, response) => {
     const body = request.body
-config.MONGODB_URI
     try {
         const userExist = await User.findOne({userName: body.userName})
 
