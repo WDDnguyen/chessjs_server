@@ -46,7 +46,7 @@ const createChessRoom = (roomName, side, roomOwner) => {
 }
 const createChessGame = () => {
     return {
-        gameId: nanoid(5),
+        gameId: nanoid(config.GAME_ID_SIZE),
         whitePlayer: '',
         blackPlayer: '',
         chess: new Chess()
@@ -108,10 +108,10 @@ io.on('connection', (socket) => {
 
     socket.on('create_room', ({newRoomInfo, user}) => {
         userMap.set(socket.id, user.userName)
-        const newRoomId = nanoid(Number(config.ROOM_ID_SIZE))
+        const newRoomId = nanoid(config.ROOM_ID_SIZE)
         // Generate another roomID if collision happened
         if (socket.rooms.has(newRoomId)) {
-            newRoomId = nanoid(Number(config.ROOM_ID_SIZE))
+            newRoomId = nanoid(config.ROOM_ID_SIZE)
         }
 
         removeUserRooms(socket)
