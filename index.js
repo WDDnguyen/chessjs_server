@@ -184,7 +184,7 @@ io.on('connection', (socket) => {
     socket.on('move', ({roomId, from, to}) => {
         const chessRoom = roomMap.get(roomId)
         const chess = chessRoom.chessGame.chess
-        const validMove = chess.move({from: from, to: to})
+        const validMove = chess.move({from: from, to: to, promotion: 'q'})
 
         if (validMove) {
             const chessGame = chessRoom.chessGame
